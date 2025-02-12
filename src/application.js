@@ -13,7 +13,7 @@ const selfName = window.crypto.randomUUID()
 Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
-  { id: "wsi_patches", path: "http://localhost:5500/data/wsiPatchEmbeddingsTSNE.json", colorBy: "tcgaClass"},
+  { id: "wsi_patches", path: "https://prafulb.github.io/fese/data/wsiPatchEmbeddingsTSNE.json", colorBy: "tcgaClass"},
   { id: "tcga_reports", path: "/ese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
   { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose_tsne.json.zip", colorBy: "cancer_type" },
