@@ -177,3 +177,120 @@ export function createDropdownButton(button, dropdownOptions, options={}) {
 
   return dropdownContainer;
 }
+
+export async function getTCGAStudy(fileId) {
+  const tcgaBasePath = `https://api.gdc.cancer.gov/files?pretty=true`
+  const filters = `filters={ "op": "=", "content": {"field": "files.file_id", "value": "${fileId}"}}`
+  const fields = `fields=cases.project.project_id,cases.case_id,file_name,type`
+  let fileInfoFromTCGA = undefined
+  try {
+    fileInfoFromTCGA = await (await fetch(`${tcgaBasePath}&${filters}&${fields}`)).json()
+    const tcgaStudy = fileInfoFromTCGA.data.hits[0].cases[0].project.project_id.replace("TCGA-", "")
+    return tcgaStudy
+  } catch (e) {
+    console.warn("Error retrieving information for WSI from TCGA: ", e)
+    return undefined
+  }
+}
+
+export function getTCGAURL(imageId) {
+  const tcgaBasePath = 'https://api.gdc.cancer.gov/data'
+  let imageURL = imageId
+  if (!imageURL.startsWith('http')) {
+    imageURL = `${tcgaBasePath}/${imageId}`
+  }
+  return imageURL
+}
+
+export async function getImageInfo(imageId) {
+  const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
+  
+  const imageURL = getTCGAURL(imageId)
+  const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
+  await imagebox3Instance.init();
+  
+  const imageInfo = await imagebox3Instance.getInfo();
+  return imageInfo
+}
+
+export async function getTile(imageId, tileParams) {
+  const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
+  
+  const imageURL = getTCGAURL(imageId)
+  const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
+  await imagebox3Instance.init();
+  
+  const tileURL = URL.createObjectURL(await imagebox3Instance.getTile(...Object.values(tileParams)));
+  return tileURL
+}
+
+export function isTileEmpty (tileURL, threshold=0.9) {
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.src = tileURL
+  
+    img.onload = () => {
+      const canvas = new OffscreenCanvas()
+      const ctx = canvas.getContext('2d')
+      canvas.width = img.width
+      canvas.height = img.height
+      ctx.drawImage(img, 0, 0)
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const pixels = imageData.data
+      const numPixels = pixels.length / 4
+
+      let whitePixelCount = 0
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i]
+        const g = pixels[i + 1]
+        const b = pixels[i + 2]
+
+        if (r > 200 && g > 200 && b > 200) {
+            whitePixelCount++
+        }
+      }
+
+      const whitePercentage = whitePixelCount / numPixels
+
+      if (whitePercentage >= threshold) {
+        resolve(true)
+      } else {
+        resolve(false)
+      }
+    }
+  
+    img.onerror = () => {
+      reject(new Error("Failed to load the image"))
+    }
+  })
+
+}
+
+export function imageTransforms(
+  imageTensor,
+  mean = [0.485, 0.456, 0.406],
+  std = [0.229, 0.224, 0.225]
+) {
+  const maxPixelValue = imageTensor.reduce((max, curr) =>
+    max <= curr ? curr : max
+  );
+  const minPixelValue = imageTensor.reduce((min, curr) =>
+    min >= curr ? curr : min
+  );
+  const minMaxNormalizedTensor = imageTensor.map(
+    (v) => (v - minPixelValue) / (maxPixelValue - minPixelValue)
+  );
+
+  const normalizeImage = (image, mean, std) => {
+    const normalizedImage = image.map(
+      (value, index) => (value - mean[index % 3]) / std[index % 3]
+    );
+    return normalizedImage;
+  };
+
+  const normalizedImage = normalizeImage(minMaxNormalizedTensor, mean, std);
+  return normalizedImage;
+}

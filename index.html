@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ESE</title>
+    <title>F-ESE</title>
     <link rel="icon" href="images/icon.svg">
     <link crossorigin="anonymous" type="text/css" rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" defer />
@@ -16,7 +16,7 @@
     <div id="main-header">
       <div id="logo-container">
         <i id="logo-icon" class="fas fa-circle-nodes"></i>
-        <span id="logo-text"><b>ESE</b>: <i>Embedded Space Explorer</i></span>
+        <span id="logo-text"><b>F-ESE</b>: <i>Federated-Embedded Space Explorer</i></span>
       </div>
 
       <div id="links-container">
@@ -32,25 +32,28 @@
     <div id="content">
       <div id="dashboard">
         <div id="gr-left">
-          <div id="gr-settings" class="grid-card" >
-            <i id="button-fill" class="fas fa-fill-drip button"></i>
+          <!-- <div id="gr-settings" class="grid-card" > -->
+            <!-- <button id="button-fill" class="fas fa-fill-drip button"></i> -->
             <!-- <i class="fas fa-cog button" data-tippy-content="Settings" popup="popup-settings"></i>
-            <i class="fas fa-database button" data-tippy-content="Data Configuration"></i>
-            <i class="fas fa-eye button" data-tippy-content="Visual Preferences"></i> -->
-          </div>
+            <i class="fas fa-database button" data-tippy-content="Data Configuration"></i> -->
+            <!-- <button id="button-embed">Join Federation</button> -->
+            <!-- <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#patchEmbedModal" disabled>Embed patch</button> -->
+            <!-- <button id="buttonLoadPCA" class="btn">PCA</button>
+            <button id="buttonLoadTSNE" class="btn btn-primary">T-SNE</button> -->
+          <!-- </div> -->
           <div id="gr-container-explorer" class="grid-card"></div>
         </div>
         
         <div id="gr-container-center">
 
-          <div id="gr-container-search" class="grid-card">
+          <!-- <div id="gr-container-search" class="grid-card">
             <form id="search-form">
-              <!-- <div class="grid-card-title">Semantic Search</div> -->
+              <div class="grid-card-title">Semantic Search</div>
               <input type="text" class="form-control" id="search-input" placeholder="Semantic Search...">
             </form>
-          </div>
+          </div> -->
           <div id="gr-container-closest" class="grid-card">
-            <div class="grid-card-title">Closest Documents</div>
+            <div class="grid-card-title">Closest Patches</div>
             <div id="closest-table-container" class="grid-card-content">Awaiting selection...</div>
           </div>
 
@@ -58,18 +61,18 @@
         </div>
         
         <div id="gr-container-document" class="grid-card">
-          <div class="grid-card-title"><span style="color: green; margin-right: 6px; font-size: 10px">⬤</span>Reference Document</div>
+          <div class="grid-card-title"><span style="color: green; margin-right: 6px; font-size: 10px">⬤</span>Reference Patch</div>
           <div id="reference-document-container" class="grid-card-content document-container">Awaiting selection...</div>
         </div>
         <div id="gr-container-documents" class="grid-card">
-          <div class="grid-card-title"><span style="color: blue; margin-right: 6px; font-size: 10px">⬤</span>Compared Document</div>
+          <div class="grid-card-title"><span style="color: blue; margin-right: 6px; font-size: 10px">⬤</span>Compared Patch</div>
           <div id="compared-document-container" class="grid-card-content document-container">Select a document to compare from the table.</div>
         </div>
 
       </div>
     </div>
 
-    <div id="popup" class="popup">
+    <!-- <div id="popup" class="popup">
       <div id="popup-topbar">
         <div id="popup-title"></div>
         <i class="fas fa-times"></i>
@@ -78,6 +81,71 @@
 
     <div id="popup-content-elements" style="display: none">
       <div id="popup-settings" title="Settings">Settings</div>
+    </div> -->
+    
+    <!-- Modal -->
+    <div class="modal fade" id="patchEmbedModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Embed WSI Patch</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="" style="display:none; width: 224px; height: 224px;" role="status">
+              <span class="spinner-border" style="margin: auto;"></span>
+            </div>
+            <img id="patchPreview" style="display: none; width:224px; height: 224px;">
+                <!-- Text Field -->
+                <span class="mb-5">
+                  <label for="wsiURL" class="form-label">URL to WSI: </label>
+                  <input type="text" class="form-control" id="wsiURL" placeholder="Enter URL or TCGA file ID">
+                </span>
+            
+                <!-- Range Sliders -->
+                <span class="my-1">
+                  <label for="tileX" class="form-label">Tile X: </label>
+                  <span id="tileXValue">0</span>
+                  <input type="range" class="form-range" id="tileX" min="0" max="100" value="0" step="1">
+                </span>
+                <br>
+            
+                <span class="mb-1">
+                  <label for="tileY" class="form-label">Tile Y: </label>
+                  <span id="tileYValue">0</span>
+                  <input type="range" class="form-range" id="tileY" min="0" max="200" value="0" step="1">
+                </span>
+                <br>
+                <span class="mb-1">
+                  <label for="tileWidth" class="form-label">Region Width: </label>
+                  <span id="tileWidthValue">256</span>
+                  <input type="range" class="form-range" id="tileWidth" min="0" max="512" value="256" step="1">
+                </span>
+                <br>
+                <span class="mb-1">
+                  <label for="tileHeight" class="form-label">Region Height: </label>
+                  <span id="tileHeightValue">256</span>
+                  <input type="range" class="form-range" id="tileHeight" min="0" max="512" value="256" step="1">
+                </span>
+                <br>
+                <!-- Radio Button -->
+                <span class="mb-1">
+                  <label class="form-label">Tile Resolution: </label>
+                  <span class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tileResolution" id="tileResolution" value="224" checked>
+                    <label class="form-check-label" for="radioOption1">224x224</label>
+                  </span>
+                </span>
+                <br>
+                <!-- Submit Button -->
+                <button id="patchEmbed" type="submit" class="mt-4 btn btn-primary">Embed</button>
+                <button id="patchEmbedInProgress" type="submit" class="d-none mt-4 btn btn-primary-disabled">Embedding... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+          </div>
+          <div class="modal-footer d-none">
+            <button type="button" id="closePatchEmbedModal" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://unpkg.com/@popperjs/core@2"></script>
