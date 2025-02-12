@@ -5,7 +5,7 @@ import jszip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import * as onnxRuntime from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/esm/ort.min.js";
 
-import { WebFed } from "http:/localhost:5501/webFed_yjs.js"
+// import { WebFed } from "http:/localhost:5501/webFed_yjs.js"
 let signalingServer = "https://signalyjs-df59a68bd6e6.herokuapp.com"
 const FEDERATION_NAME = "FESE"
 const selfName = window.crypto.randomUUID()
