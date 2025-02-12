@@ -239,11 +239,11 @@ class Application {
           'embedding3d': embedding.slice(0,3)
         })
 
-        this.webFed.broadcastMessage({
-          'type': "newPatchEmbedding",
-          'from': this.webFed.selfName,
-          'acknowledged': [this.webFed.selfName]
-        })
+        // this.webFed.broadcastMessage({
+        //   'type': "newPatchEmbedding",
+        //   'from': this.webFed.selfName,
+        //   'acknowledged': [this.webFed.selfName]
+        // })
 
         this.elems.patchEmbed.nextElementSibling.classList.remove("d-block")
         this.elems.patchEmbed.nextElementSibling.classList.add("d-none")
