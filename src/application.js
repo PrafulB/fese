@@ -1,4 +1,4 @@
-import { cosineSimilarity, createDropdownButton, embedGemini, euclideanDistance, hookDropdownButton, getTCGAStudy, getTCGAURL, getImageInfo, getTile, imageTransforms } from "./helper.js";
+import { cosineSimilarity, createDropdownButton, embedGemini, euclideanDistance, hookDropdownButton, getTCGAStudy, getTCGAURL, getGCSURL, getImageInfo, getTile, imageTransforms } from "./helper.js";
 import { State } from "./State.js";
 import { Tabulator, SelectRowModule } from 'https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.1/+esm';
 import jszip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -13,7 +13,7 @@ const selfName = window.crypto.randomUUID()
 Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
-  { id: "wsi_patches", path: "https://prafulb.github.io/fese/data/wsiPatchEmbeddingsTSNE.json", colorBy: "tcgaClass"},
+  { id: "wsi_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
   { id: "tcga_reports", path: "/ese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
   { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose_tsne.json.zip", colorBy: "cancer_type" },
@@ -227,12 +227,15 @@ class Application {
         this.elems.patchEmbed.nextElementSibling.classList.remove("d-none")
         this.elems.patchEmbed.nextElementSibling.classList.add("d-block")
         const embedding = await embedPatch(document.getElementById('patchPreview').src, document.getElementById(formInputFields[5]).value)
-        const tcgaWSIURL = getTCGAURL(document.getElementById(formInputFields[0]).value)
+        // const tcgaWSIURL = getTCGAURL(document.getElementById(formInputFields[0]).value)
+        const tcgaWSIURL = getGCSURL(document.getElementById(formInputFields[0]).value)
         this.data.push({
           tcgaWSIURL,
+          gcsWSIURL,
           "tileParams": getTileParams(),
           "properties": {
-            "tcgaClass": await getTCGAStudy(getTCGAURL(tcgaWSIURL).split("/").slice(-1)[0]) || "Unknown"
+            // "tcgaClass": await getTCGAStudy(getTCGAURL(tcgaWSIURL).split("/").slice(-1)[0]) || "Unknown"
+            "tcgaClass": await getTCGAStudy(getGCSURL(gcsWSIURL).split("/").slice(-1)[0]) || "Unknown"
           },
           "_index": this.data.length,
           embedding,
@@ -303,16 +306,18 @@ class Application {
     const measures = this.data.map(d => this.state.measure.f(d.embedding, this.state.focusDocument.embedding));
     this.data.forEach((doc,i) => doc._measure = measures[i]);
     this.drawTable();
-    getTile(this.state.focusDocument.tcgaWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
-      this.elems.referenceDocumentContainer.innerHTML = `<img src=${tileURL}><p>Class: ${this.state.focusDocument.properties.tcgaClass}`
+    // getTile(this.state.focusDocument.tcgaWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
+    getTile(this.state.focusDocument.gcsWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
+      this.elems.referenceDocumentContainer.innerHTML = `<img src=${tileURL}><p>Gleason Score: ${this.state.focusDocument.properties.gleason_score}`
     })
     this.elems.referenceDocumentContainer.innerHTML = `<p>Loading Patch...</p>`
   }
 
   async compareDocumentUpdated() {
     const compareDocument = this.state.compareDocument[0];
-    getTile(compareDocument.tcgaWSIURL, compareDocument.tileParams).then(tileURL => {
-      this.elems.comparedDocumentContainer.innerHTML = `<img src=${tileURL}><p>Class: ${compareDocument.properties.tcgaClass}`
+    // getTile(compareDocument.tcgaWSIURL, compareDocument.tileParams).then(tileURL => {
+    getTile(compareDocument.gcsWSIURL, compareDocument.tileParams).then(tileURL => {
+      this.elems.comparedDocumentContainer.innerHTML = `<img src=${tileURL}><p>Gleason Score: ${compareDocument.properties.gleason_score}`
     })
     this.elems.comparedDocumentContainer.innerHTML = `<p>Loading Patch...</p>`
     this.drawUpdateExplorer();

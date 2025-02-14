@@ -202,10 +202,20 @@ export function getTCGAURL(imageId) {
   return imageURL
 }
 
+export function getGCSURL(imageName) {
+  const gcsBasePath = 'https://storage.googleapis.com/tcga-wsi-for-embedding/'
+  let imageURL = imageName
+  if (!imageURL.startsWith('http')) {
+    imageURL = `${gcsBasePath}/${imageId}`
+  }
+  return imageURL
+}
+
 export async function getImageInfo(imageId) {
   const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
   
-  const imageURL = getTCGAURL(imageId)
+  // const imageURL = getTCGAURL(imageId)
+  const imageURL = getGCSURL(imageId)
   const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
   await imagebox3Instance.init();
   
@@ -216,7 +226,8 @@ export async function getImageInfo(imageId) {
 export async function getTile(imageId, tileParams) {
   const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
   
-  const imageURL = getTCGAURL(imageId)
+  // const imageURL = getTCGAURL(imageId)
+  const imageURL = getGCSURL(imageId)
   const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
   await imagebox3Instance.init();
   
