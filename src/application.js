@@ -326,7 +326,7 @@ class Application {
   drawUpdateExplorer() {
 
     let colors = this.data.map(() => "grey");
-    const sizes = this.data.map(() => 5);
+    const sizes = this.data.map(() => 15);
 
     if (this.state.compareDocument) {
       this.state.compareDocument.forEach(doc => colors[doc._index] = "blue");
@@ -339,7 +339,7 @@ class Application {
 
     const colorMap = new Map();
     const colorRange = d3.schemeCategory10;
-    const values = [...new Set(this.data.map(d => d.properties[this.state.colorBy]))];
+    const values = [...new Set(this.data.map(d => d.properties[this.state.colorBy]))].sort();
     values.forEach((value, i) => colorMap.set(value, colorRange[i % colorRange.length]));
     // colors = this.data.map(d => d._measure);
     colors = this.data.map(d => colorMap.get(d.properties[this.state.colorBy]));
