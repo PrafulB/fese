@@ -327,30 +327,57 @@ class Application {
 
     let colors = this.data.map(() => "grey");
     const sizes = this.data.map(() => 15);
+    const borderWidths = this.data.map(() => {
+      return 0
+    });
 
     if (this.state.compareDocument) {
-      this.state.compareDocument.forEach(doc => colors[doc._index] = "blue");
-      this.state.compareDocument.forEach(doc => sizes[doc._index] = 10);
+      // this.state.compareDocument.forEach(doc => colors[doc._index] = "blue");
+      this.state.compareDocument.forEach(doc => borderWidths[doc._index] = 5);
+      this.state.compareDocument.forEach(doc => sizes[doc._index] = 30);
     }
     if (this.state.focusDocument) {
-      colors[this.state.focusDocument._index] = "green";
-      sizes[this.state.focusDocument._index] = 15;
+      // colors[this.state.focusDocument._index] = "green";
+      borderWidths[this.state.focusDocument._index] = 5
+      sizes[this.state.focusDocument._index] = 30;
     }
 
     const colorMap = new Map();
-    const colorRange = d3.schemeCategory10;
+    const opacitiesMap = new Map();
     const values = [...new Set(this.data.map(d => d.properties[this.state.colorBy]))].sort();
+    const colorRange = d3.schemeCategory10.map(color => d3.rgb(color));
+    
     values.forEach((value, i) => colorMap.set(value, colorRange[i % colorRange.length]));
+    const valueCounts = values.reduce((countsObj, value) => {
+      countsObj[value] = this.data.filter(d => d.properties[this.state.colorBy] === value).length
+      return countsObj
+    }, {})
+    const [maxCount, minCount] = [Math.max(...Object.values(valueCounts)), Math.min(...Object.values(valueCounts))]
+    const opacitiesRange = Object.entries(valueCounts).sort((k1, k2) => k1-k2).reduce((opacitiesObj, [value, count]) => {
+      const inverseNormalizedCount = 0.6 + ((maxCount - count)/(maxCount-minCount)) * (1-0.6)
+      opacitiesObj[value] = inverseNormalizedCount
+      return opacitiesObj
+    }, {})
+    values.forEach((value, i) => opacitiesMap.set(value, opacitiesRange[value]))
     // colors = this.data.map(d => d._measure);
-    colors = this.data.map(d => colorMap.get(d.properties[this.state.colorBy]));
+    colors = this.data.map(d => {
+      const colorObj = colorMap.get(d.properties[this.state.colorBy])
+      const opacity = opacitiesMap.get(d.properties[this.state.colorBy])
+      return `rgba(${colorObj.r},${colorObj.g},${colorObj.b},${opacity})`
+    });
 
     const update = {
       marker: { 
         color: colors,
         size: sizes,
+        line: {
+          width: 0
+        },
+        showLegend: true
         // colorscale: "Blues",
       }
     };
+
     // setTimeout is a workaround for a Plotly bug (https://github.com/plotly/plotly.js/issues/1025)
     setTimeout(() => Plotly.restyle(this.elems.explorerContainer, update, [0]), 50);
   }

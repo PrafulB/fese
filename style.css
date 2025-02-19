@@ -13,6 +13,10 @@ body {
   height: 100vh;
 }
 
+img {
+  border: 1px solid black;
+}
+
 #main-header {
   position: relative;
 
@@ -107,6 +111,12 @@ body {
   /* display: flex;
   align-items: center;
   justify-content: center; */
+}
+
+#gr-dimension-options {
+  display: grid;
+  grid-auto-columns: auto;
+  gap: 10px;
 }
 
 #gr-settings {
