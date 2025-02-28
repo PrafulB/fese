@@ -13,9 +13,9 @@ const selfName = window.crypto.randomUUID()
 Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
-  { id: "gleason_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
   { id: "gleason_slides", path: "https://prafulb.github.io/fese/data/tcgaGleasonSlideEmbeddingsTSNE.json", colorBy: "gleason_score"},
-  { id: "wsi_slides", path: "/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
+  { id: "gleason_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
+  { id: "wsi_slides", path: "https://prafulb.github.io/fese/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
   { id: "tcga_reports", path: "/ese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
   { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose_tsne.json.zip", colorBy: "cancer_type" },
@@ -96,9 +96,11 @@ class Application {
         })
       }
     })  
-    document.addEventListener("defaultMessage", (e) => {
-      console.log("HERE")
-      console.log(e)
+    document.addEventListener("webFed_defaultMessage", (e) => {
+      console.log("Embedding received", e)
+      this.data.push(e.detail.data)
+      this.dataConfigUpdated()
+      this.state.focusDocument = this.data[this.data.length - 1]
     })
     this.state.trigger("dataConfig");
   }
@@ -228,6 +230,7 @@ class Application {
         this.webFed.broadcastMessage({
           'type': "newPatchEmbedding",
           'from': this.webFed.selfName,
+          'data': newEmbedding,
           'acknowledged': [this.webFed.selfName]
         })
 
