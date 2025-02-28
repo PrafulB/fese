@@ -37,7 +37,10 @@
             <!-- <i class="fas fa-cog button" data-tippy-content="Settings" popup="popup-settings"></i>
             <i class="fas fa-database button" data-tippy-content="Data Configuration"></i> -->
             <!-- <button id="button-embed">Join Federation</button> -->
-            <!-- <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#patchEmbedModal" disabled>Embed patch</button> -->
+             <div>
+               <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal">Embed Slide</button>
+               <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal" disabled>Embed Pathology Report</button>
+             </div>
             <!-- <button id="buttonLoadPCA" class="btn">PCA</button>
             <button id="buttonLoadTSNE" class="btn btn-primary">T-SNE</button> -->
           <!-- </div> -->
@@ -84,7 +87,7 @@
     </div> -->
     
     <!-- Modal -->
-    <div class="modal fade" id="patchEmbedModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="slideEmbedModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -101,35 +104,34 @@
                   <label for="wsiURL" class="form-label">URL to WSI: </label>
                   <input type="text" class="form-control" id="wsiURL" placeholder="Enter URL or TCGA file ID">
                 </span>
-            
-                <!-- Range Sliders -->
-                <span class="my-1">
-                  <label for="tileX" class="form-label">Tile X: </label>
-                  <span id="tileXValue">0</span>
-                  <input type="range" class="form-range" id="tileX" min="0" max="100" value="0" step="1">
+                <br>
+                <span class="mb-1">
+                  <label for="imageLabel" class="form-label">Image Label: </label>                  
+                  <input type="text" class="form-control" required id="imageLabel">
+                </span>
+                <br>
+                
+                <span class="mt-2 my-1">
+                  <label for="numPatches" class="form-label">No. of patches to sample: </label>
+                  <input type="number" class="form-control" id="numPatches" min="0" max="100" value="50" step="1">
                 </span>
                 <br>
             
                 <span class="mb-1">
-                  <label for="tileY" class="form-label">Tile Y: </label>
-                  <span id="tileYValue">0</span>
-                  <input type="range" class="form-range" id="tileY" min="0" max="200" value="0" step="1">
-                </span>
-                <br>
-                <span class="mb-1">
-                  <label for="tileWidth" class="form-label">Region Width: </label>
+                  <label for="tileWidth" class="form-label">Patch Width: </label>
                   <span id="tileWidthValue">256</span>
                   <input type="range" class="form-range" id="tileWidth" min="0" max="512" value="256" step="1">
                 </span>
                 <br>
                 <span class="mb-1">
-                  <label for="tileHeight" class="form-label">Region Height: </label>
+                  <label for="tileHeight" class="form-label">Patch Height: </label>
                   <span id="tileHeightValue">256</span>
                   <input type="range" class="form-range" id="tileHeight" min="0" max="512" value="256" step="1">
                 </span>
                 <br>
-                <!-- Radio Button -->
-                <span class="mb-1">
+                <br>
+
+                <span class="">
                   <label class="form-label">Tile Resolution: </label>
                   <span class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="tileResolution" id="tileResolution" value="224" checked>
@@ -137,12 +139,31 @@
                   </span>
                 </span>
                 <br>
+
+                <span class="">
+                  <label for="encoderModel" class="form-label">Encoder Model: </label>
+                  <div class="btn-group">
+                    <select id="encoderModel" class="form-select">
+                      <option selected value="https://huggingface.co/kaczmarj/CTransPath/resolve/main/model.onnx">CTransPath</option>
+                      <option value="https://huggingface.co/prafulb/phikon-onnx/resolve/main/model.onnx" disabled>Phikon</option>
+                      <option value="" disabled>PLIP</option>
+                      <option value="" disabled>CONCH</option>
+                    </select>
+                  </div>
+                <br>
+                  <br>
+                <span class="input mb-3">
+                  <div class="input-group-text">
+                    <input id="shareEmbeddingCheckbox" class="form-check-input mt-0" type="checkbox" value="" checked >
+                    <label for="shareEmbeddingCheckbox" class="px-3">Share Embedding</label>
+                  </div>
+                </span>
                 <!-- Submit Button -->
                 <button id="patchEmbed" type="submit" class="mt-4 btn btn-primary">Embed</button>
                 <button id="patchEmbedInProgress" type="submit" class="d-none mt-4 btn btn-primary-disabled">Embedding... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
           </div>
           <div class="modal-footer d-none">
-            <button type="button" id="closePatchEmbedModal" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" id="closeSlideEmbedModal" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>

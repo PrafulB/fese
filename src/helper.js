@@ -1,3 +1,5 @@
+let imagebox3Instance = {}
+
 export function euclideanDistance(pointA, pointB) {
   if (pointA.length !== pointB.length) {
     throw new Error("Points must have the same dimensions");
@@ -214,70 +216,211 @@ export function getGCSURL(imageName) {
 export async function getImageInfo(imageId) {
   const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
   
-  // const imageURL = getTCGAURL(imageId)
-  const imageURL = getGCSURL(imageId)
-  const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
-  await imagebox3Instance.init();
+  const imageURL = getTCGAURL(imageId)
+  // const imageURL = getGCSURL(imageId)
+  if (imagebox3Instance.imageSource !== imageURL || !imagebox3Instance.tiff) {
+    imagebox3Instance = new imagebox3.Imagebox3(imageURL);
+    await imagebox3Instance.init();
+  }
   
   const imageInfo = await imagebox3Instance.getInfo();
   return imageInfo
 }
 
-export async function getTile(imageId, tileParams) {
+export async function getTile(imageId, tileParams=256) {
   const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
   
-  // const imageURL = getTCGAURL(imageId)
-  const imageURL = getGCSURL(imageId)
-  const imagebox3Instance = new imagebox3.Imagebox3(imageURL);
-  await imagebox3Instance.init();
-  
-  const tileURL = URL.createObjectURL(await imagebox3Instance.getTile(...Object.values(tileParams)));
+  const imageURL = getTCGAURL(imageId)
+  // const imageURL = getGCSURL(imageId)
+  if (imagebox3Instance.imageSource !== imageURL || !imagebox3Instance.tiff) {
+    imagebox3Instance = new imagebox3.Imagebox3(imageURL, 1);
+    await imagebox3Instance.init();
+  }
+  // const compression = imagebox3Instance.tiff.allImages.find(i => i.fileDirectory.ImageLength === imagebox3Instance.tiff.maxHeight && i.fileDirectory.ImageWidth === imagebox3Instance.tiff.maxWidth).fileDirectory.Compression
+  // if (compression !== 7) {
+  //     await imagebox3Instance.createWorkerPool(1)
+  // }
+
+  let tileURL = ""
+  if (typeof(tileParams) === 'object') {
+    tileURL = URL.createObjectURL(await imagebox3Instance.getTile(...Object.values(tileParams)));
+  } else if (Number.isInteger(tileParams)) {
+    const imageInfo = await imagebox3Instance.getInfo();
+    const thumbnailWidth = tileParams
+    const thumbnailHeight = Math.floor(thumbnailWidth * imageInfo.height/imageInfo.width)
+    tileURL = URL.createObjectURL(await imagebox3Instance.getThumbnail(thumbnailWidth, thumbnailHeight))
+  }
   return tileURL
 }
 
-export function isTileEmpty (tileURL, threshold=0.9) {
+const isTileEmpty = (canvas, ctx, threshold=0.9, returnEmptyProportion=false) => {
 
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.src = tileURL
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const pixels = imageData.data
+  const numPixels = pixels.length / 4
+
+  let whitePixelCount = 0
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i]
+    const g = pixels[i + 1]
+    const b = pixels[i + 2]
+
+    if (r > 200 && g > 200 && b > 200) {
+        whitePixelCount++
+    }
+  }
+
+  const whitePercentage = whitePixelCount / numPixels
+  let isEmpty = false
+  if (whitePercentage >= threshold) {
+    isEmpty = true
+  }
+  if (returnEmptyProportion) {
+    return whitePercentage
+  }
+  return isEmpty
+
+}
+
+const findTissueRegionsInImage = (gridDim=8, thumbnailWidth=1024) => new Promise(async (resolve, reject) => {
   
-    img.onload = () => {
-      const canvas = new OffscreenCanvas()
-      const ctx = canvas.getContext('2d')
-      canvas.width = img.width
-      canvas.height = img.height
-      ctx.drawImage(img, 0, 0)
+  const imageInfo = await imagebox3Instance.getInfo();
+  const thumbnailHeight = thumbnailWidth * imageInfo.height/imageInfo.width
+  imagebox3Instance.getThumbnail(thumbnailWidth, thumbnailHeight).then(blob => {
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const pixels = imageData.data
-      const numPixels = pixels.length / 4
-
-      let whitePixelCount = 0
-
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i]
-        const g = pixels[i + 1]
-        const b = pixels[i + 2]
-
-        if (r > 200 && g > 200 && b > 200) {
-            whitePixelCount++
+    const thumbnailURL = URL.createObjectURL(blob);
+    const thumbnailImg = new Image()
+    thumbnailImg.crossOrigin = "Anonymous"
+    thumbnailImg.src = thumbnailURL
+    const offscreenCanvas = new OffscreenCanvas(thumbnailWidth/gridDim, thumbnailHeight/gridDim)
+    const offscreenCtx = offscreenCanvas.getContext('2d')
+    const thumbnailRegions = Array(8).fill(undefined).map((row, rowIdx) => Array(gridDim).fill(undefined).map((col, colIdx) => [thumbnailWidth*rowIdx/gridDim, thumbnailHeight*colIdx/gridDim])).flat()
+    thumbnailImg.onload = () => {
+      const tissueRegions = thumbnailRegions.map(([x, y]) => {
+        offscreenCtx.drawImage(thumbnailImg, x, y, offscreenCanvas.width, offscreenCanvas.height, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        const emptyPercentage = isTileEmpty(offscreenCanvas, offscreenCtx, 0.9, true)
+        const topX = Math.floor(x * imageInfo.width/thumbnailWidth)
+        const topY = Math.floor(y * imageInfo.height/thumbnailHeight)
+        const bottomX = topX + Math.floor(imageInfo.width/gridDim)
+        const bottomY = topY + Math.floor(imageInfo.height/gridDim)
+        return {
+          topX,
+          topY,
+          bottomX,
+          bottomY,
+          emptyPercentage
         }
-      }
-
-      const whitePercentage = whitePixelCount / numPixels
-
-      if (whitePercentage >= threshold) {
-        resolve(true)
-      } else {
-        resolve(false)
-      }
+      }).sort((a,b) => a.emptyPercentage-b.emptyPercentage).slice(0,8)
+      resolve(tissueRegions)
     }
-  
-    img.onerror = () => {
-      reject(new Error("Failed to load the image"))
-    }
-  })
 
+  }).catch(e => resolve([]))
+})
+
+const getRandomTileParams = async (imagebox3Instance, tissueRegions) => {
+  const imageInfo = await imagebox3Instance.getInfo();
+  let randomRegion = {
+    'topX': 0,
+    'topY': 0,
+    'bottomX': imageInfo.width,
+    'bottomY': imageInfo.height
+  }
+  if (Array.isArray(tissueRegions) && tissueRegions.length > 0) {
+    randomRegion = tissueRegions[Math.floor(Math.random() * tissueRegions.length)]
+  }
+  return {
+    'tileX': Math.floor(randomRegion.topX + Math.random() * (randomRegion.bottomX - randomRegion.topX - 224)),
+    'tileY': Math.floor(randomRegion.topY + Math.random() * (randomRegion.bottomY - randomRegion.topY - 224)),
+    'tileWidth': imageInfo?.pixelsPerMeter ? imageInfo.pixelsPerMeter * 128 : 256,
+    'tileHeight': imageInfo?.pixelsPerMeter ? imageInfo.pixelsPerMeter * 128 : 256,
+    'tileSize': 224
+  }
+}
+
+const columnWiseAverageOfEmbeddings = (embeddings) => {
+  if (embeddings.length === 0) return [];
+
+  const numColumns = embeddings[0].embedding.length;
+  const averages = new Array(numColumns).fill(0);
+
+  // Sum up each column
+  for (let i = 0; i < numColumns; i++) {
+      let columnSum = 0;
+      for (let j = 0; j < embeddings.length; j++) {
+          columnSum += embeddings[j].embedding[i];
+      }
+      // Calculate average for the column
+      averages[i] = columnSum / embeddings.length;
+  }
+
+  return averages;
+}
+
+export const samplePatchesAndEmbedSlide = async (wsiURL, numPatches, encoderModel) => {
+  const onnxRuntime = await import(
+    "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/esm/ort.min.js"
+  )
+  onnxRuntime.env.wasm.wasmPaths =
+      "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
+
+
+  let slideEmbeddings = []
+  if (imagebox3Instance.imageSource !== wsiURL) {
+    const imagebox3Instance = new Imagebox3.Imagebox3(`${tcgaBasePath}/${img.file_id}`)
+    await imagebox3Instance.init()
+  }
+  const tissueRegions = await findTissueRegionsInImage(imagebox3Instance)
+  let currentPatchNum = 0
+  const patchEmbeddings = []
+  while (currentPatchNum < numPatches) {
+    const tileParams = await getRandomTileParams(imagebox3Instance, tissueRegions)
+    if (!isNaN(tileParams.tileX)) {
+      let tileURL = undefined
+      try {
+        tileURL = URL.createObjectURL(await imagebox3Instance.getTile(...Object.values(tileParams)))
+      } catch (e) {
+        console.log(wsiURL, e)
+        continue
+      }
+      const canvas = new OffscreenCanvas(tileParams.tileSize, tileParams.tileSize)
+      const ctx = canvas.getContext("2d");
+      
+      const imageTensor = await new Promise((resolve) => {
+        const tempImg = new Image();
+        tempImg.src = tileURL;
+        tempImg.crossOrigin = "anonymous";
+        tempImg.onload = () => {
+          ctx.drawImage(tempImg, 0, 0);
+          if (isTileEmpty(canvas, ctx)) {
+            resolve(undefined)
+          }
+          const pixelArray = Array.from(
+          ctx
+            .getImageData(0, 0, tileParams.tileSize, tileParams.tileSize)
+            .data.filter((v, i) => i % 4 !== 3)
+          );
+          
+          resolve(new onnxRuntime.Tensor("float32", imageTransforms(pixelArray), [1, 3, 224, 224]));
+        };
+      })
+      if (!imageTensor) {
+        continue
+      }
+      const { embedding: { cpuData } } = await encoderModel.run({ image: imageTensor });
+      const embedding = Object.values(cpuData)
+      patchEmbeddings.push({
+        wsiURL,
+        tileParams,
+        embedding
+      })
+      currentPatchNum+=1
+    }
+  }
+  if (patchEmbeddings.length > 0) {
+    slideEmbeddings = columnWiseAverageOfEmbeddings(patchEmbeddings)
+  }
+  return slideEmbeddings
 }
 
 export function imageTransforms(

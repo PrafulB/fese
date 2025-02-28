@@ -1,11 +1,11 @@
-import { cosineSimilarity, createDropdownButton, embedGemini, euclideanDistance, hookDropdownButton, getTCGAStudy, getTCGAURL, getGCSURL, getImageInfo, getTile, imageTransforms } from "./helper.js";
+import { cosineSimilarity, createDropdownButton, embedGemini, euclideanDistance, hookDropdownButton, getTCGAStudy, getTCGAURL, getGCSURL, getImageInfo, getTile, samplePatchesAndEmbedSlide, imageTransforms } from "./helper.js";
 import { State } from "./State.js";
 import { Tabulator, SelectRowModule } from 'https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.1/+esm';
 import jszip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import * as onnxRuntime from "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/esm/ort.min.js";
 
-// import { WebFed } from "http:/localhost:5501/webFed_yjs.js"
+import { WebFed } from "https:/episphere.github.io/lab/webFed_yjs.js"
 let signalingServer = "https://signalyjs-df59a68bd6e6.herokuapp.com"
 const FEDERATION_NAME = "FESE"
 const selfName = window.crypto.randomUUID()
@@ -13,7 +13,9 @@ const selfName = window.crypto.randomUUID()
 Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
-  { id: "wsi_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
+  { id: "gleason_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
+  { id: "gleason_slides", path: "https://prafulb.github.io/fese/data/tcgaGleasonSlideEmbeddingsTSNE.json", colorBy: "gleason_score"},
+  { id: "wsi_slides", path: "/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
   { id: "tcga_reports", path: "/ese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
   { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose_tsne.json.zip", colorBy: "cancer_type" },
@@ -79,33 +81,33 @@ class Application {
     });
     resizeObserver.observe(this.elems.content);
 
-    // this.webFed = new WebFed({
-    //   signalingServer,
-    //   'federationName': FEDERATION_NAME,
-    //   selfName
-    // })
-    // console.log(this.webFed)
-    // document.addEventListener("webFed_synced", (event) =>{
-    //   if (event.detail.synced) {
-    //     const allPeers = this.webFed.getAllPeers()
-    //     allPeers.forEach(peer => {
-    //       if (!peer.isSelf)
-    //         console.log(`Connected to peer ${peer.name}`)
-    //     })
-    //   }
-    // })  
-    // document.addEventListener("defaultMessage", (e) => {
-    //   console.log("HERE")
-    //   console.log(e)
-    // })
+    this.webFed = new WebFed({
+      signalingServer,
+      'federationName': FEDERATION_NAME,
+      selfName
+    })
+    console.log(this.webFed)
+    document.addEventListener("webFed_synced", (event) =>{
+      if (event.detail.synced) {
+        const allPeers = this.webFed.getAllPeers()
+        allPeers.forEach(peer => {
+          if (!peer.isSelf)
+            console.log(`Connected to peer ${peer.name}`)
+        })
+      }
+    })  
+    document.addEventListener("defaultMessage", (e) => {
+      console.log("HERE")
+      console.log(e)
+    })
     this.state.trigger("dataConfig");
   }
 
   initState() {
     const initialState = CONSTANTS.DEFAULT_STATE;
 
-    if (this.url.searchParams.has("example_data")) {
-      initialState.dataConfig = EXAMPLE_DATA.find(d => d.id == this.url.searchParams.get("example_data"));
+    if (this.url.searchParams.has("id")) {
+      initialState.dataConfig = EXAMPLE_DATA.find(d => d.id == this.url.searchParams.get("id"));
     }
     
     this.state = new State();
@@ -142,12 +144,12 @@ class Application {
     //   });
     // })
 
-    ["tileX", "tileY", "tileWidth", "tileHeight"].forEach(elId => {
-      const element = document.getElementById(elId)
-      element.oninput = async (e) => {
-        element.previousElementSibling.innerText = e.target.value
-      }
-    })
+    // ["tileX", "tileY", "tileWidth", "tileHeight"].forEach(elId => {
+    //   const element = document.getElementById(elId)
+    //   element.oninput = async (e) => {
+    //     element.previousElementSibling.innerText = e.target.value
+    //   }
+    // })
 
     const patchPreview = (url) => {
       document.getElementById('patchPreview').src = url
@@ -157,103 +159,84 @@ class Application {
       }
     }
 
-    const getTileParams = () => {
-      const formInputFields = ["wsiURL", "tileX", "tileY", "tileWidth", "tileHeight", "tileResolution"]
-      const tileParams = {}
-      tileParams[formInputFields[1]] = parseInt(document.getElementById(formInputFields[1]).value)
-      tileParams[formInputFields[2]] = parseInt(document.getElementById(formInputFields[2]).value)
-      tileParams[formInputFields[3]] = parseInt(document.getElementById(formInputFields[3]).value)
-      tileParams[formInputFields[4]] = parseInt(document.getElementById(formInputFields[4]).value)
-      tileParams[formInputFields[5]] = parseInt(document.getElementById(formInputFields[5]).value)
-      return tileParams
-    }
+    // const getTileParams = () => {
+    //   const formInputFields = ["wsiURL", "tileX", "tileY", "tileWidth", "tileHeight", "tileResolution"]
+    //   // const tileParams = {}
+    //   // tileParams[formInputFields[1]] = parseInt(document.getElementById(formInputFields[1]).value)
+    //   // tileParams[formInputFields[2]] = parseInt(document.getElementById(formInputFields[2]).value)
+    //   // tileParams[formInputFields[3]] = parseInt(document.getElementById(formInputFields[3]).value)
+    //   // tileParams[formInputFields[4]] = parseInt(document.getElementById(formInputFields[4]).value)
+    //   // tileParams[formInputFields[5]] = parseInt(document.getElementById(formInputFields[5]).value)
+    //   // return tileParams
+    // }
 
-    const embedPatch = async (objectURL, patchSize) => {
+    const embedSlide = async (slideURL, numPatches, encoderModelURL) => {
       if (!this.state.embeddingModel) {
         onnxRuntime.env.wasm.wasmPaths =
             "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
-        this.state.embeddingModel = await onnxRuntime.InferenceSession.create(
-            "https://huggingface.co/prafulb/phikon-onnx/resolve/main/model.onnx"
-          );
+        this.state.embeddingModel = await onnxRuntime.InferenceSession.create(encoderModelURL);
       }
 
-      const canvas = new OffscreenCanvas(patchSize, patchSize);
-      const ctx = canvas.getContext("2d");
-      
-      const imageTensor = await new Promise((resolve) => {
-          const tempImg = new Image();
-          tempImg.src = objectURL;
-          tempImg.crossOrigin = "anonymous";
-          tempImg.onload = () => {
-              ctx.drawImage(tempImg, 0, 0);
-              const pixelArray = Array.from(
-              ctx
-                .getImageData(0, 0, patchSize, patchSize)
-                .data.filter((v, i) => i % 4 !== 3)
-              );
-              
-              resolve(new onnxRuntime.Tensor("float32", imageTransforms(pixelArray), [1, 3, 224, 224]));
-          };
-      })
-      const { embedding: { cpuData } } = await this.state.embeddingModel.run({ image: imageTensor });
-      return Array.from(cpuData)
+      const slideEmbeddings = await samplePatchesAndEmbedSlide(slideURL, numPatches, this.state.embeddingModel)
+      return slideEmbeddings
     }
 
-    const formInputFields = ["wsiURL", "tileX", "tileY", "tileWidth", "tileHeight", "tileResolution"]
-    formInputFields.forEach(elId => {
-      const element = document.getElementById(elId)
-      element.onchange = async (e) => {
-        document.getElementById('patchPreview').style.display = "none"
-        document.getElementById('patchPreview').previousElementSibling.style.display = "block"
-        const wsiURL = document.getElementById(formInputFields[0]).value
-        if (e.target.id === "wsiURL") {
-          const imageInfo = await getImageInfo(wsiURL)
-          if (imageInfo) {
-            document.getElementById(formInputFields[1]).max = imageInfo.width - 256
-            document.getElementById(formInputFields[2]).max = imageInfo.height - 256
-          }
-        }
-        const tileParams = getTileParams()
-        
-        const tileURL = await getTile(wsiURL, tileParams)
-        patchPreview(tileURL)
-      }
-    })
+    const formInputFields = ["wsiURL", "numPatches", "encoderModel", "imageLabel"]
+    document.getElementById(formInputFields[0]).onchange = async (e) => {
+      document.getElementById('patchPreview').style.display = "none"
+      document.getElementById('patchPreview').previousElementSibling.style.display = "block"
+      const wsiURL = document.getElementById(formInputFields[0]).value
+      // if (e.target.id === "wsiURL") {
+      //   const imageInfo = await getImageInfo(wsiURL)
+        // if (imageInfo) {
+        //   document.getElementById(formInputFields[1]).max = imageInfo.width - 256
+        //   document.getElementById(formInputFields[2]).max = imageInfo.height - 256
+        // }
+      // }
+      // const tileParams = getTileParams()
+      
+      const tileURL = await getTile(wsiURL)
+      patchPreview(tileURL)
+    }
     
     this.elems.patchEmbed.addEventListener("click", async (e) => {
+      if (!document.getElementById(formInputFields[3]).value) {
+        alert("Please enter a value for the image label")
+        return
+      }
       if (document.getElementById('patchPreview').src) {
         this.elems.patchEmbed.classList.remove("d-block")
         this.elems.patchEmbed.classList.add("d-none")
         this.elems.patchEmbed.nextElementSibling.classList.remove("d-none")
         this.elems.patchEmbed.nextElementSibling.classList.add("d-block")
-        const embedding = await embedPatch(document.getElementById('patchPreview').src, document.getElementById(formInputFields[5]).value)
+        const embedding = await embedSlide(document.getElementById(formInputFields[0]).value, document.getElementById(formInputFields[1]).value, document.getElementById(formInputFields[2]).value)
         // const tcgaWSIURL = getTCGAURL(document.getElementById(formInputFields[0]).value)
-        const tcgaWSIURL = getGCSURL(document.getElementById(formInputFields[0]).value)
-        this.data.push({
-          tcgaWSIURL,
-          gcsWSIURL,
-          "tileParams": getTileParams(),
-          "properties": {
-            // "tcgaClass": await getTCGAStudy(getTCGAURL(tcgaWSIURL).split("/").slice(-1)[0]) || "Unknown"
-            "tcgaClass": await getTCGAStudy(getGCSURL(gcsWSIURL).split("/").slice(-1)[0]) || "Unknown"
-          },
+        const wsiURL = getTCGAURL(document.getElementById(formInputFields[0]).value)
+        const imageLabel = isNaN(parseInt(document.getElementById(formInputFields[3]).value)) ? document.getElementById(formInputFields[3]).value : parseInt(document.getElementById(formInputFields[3]).value)
+        const labelKey = this.state.colorBy
+        const properties = {}
+        properties[labelKey] = imageLabel
+        const newEmbedding = {
+          wsiURL,
+          properties,
           "_index": this.data.length,
           embedding,
           'embedding3d': embedding.slice(0,3)
-        })
+        }
+        this.data.push(newEmbedding)
 
-        // this.webFed.broadcastMessage({
-        //   'type': "newPatchEmbedding",
-        //   'from': this.webFed.selfName,
-        //   'acknowledged': [this.webFed.selfName]
-        // })
+        this.webFed.broadcastMessage({
+          'type': "newPatchEmbedding",
+          'from': this.webFed.selfName,
+          'acknowledged': [this.webFed.selfName]
+        })
 
         this.elems.patchEmbed.nextElementSibling.classList.remove("d-block")
         this.elems.patchEmbed.nextElementSibling.classList.add("d-none")
         this.elems.patchEmbed.classList.remove("d-none");
         this.elems.patchEmbed.classList.add("d-block");
 
-        document.getElementById("closePatchEmbedModal").click()
+        document.getElementById("closeSlideEmbedModal").click()
         this.dataConfigUpdated()
         this.state.focusDocument = this.data[this.data.length - 1]
 
@@ -306,20 +289,41 @@ class Application {
     const measures = this.data.map(d => this.state.measure.f(d.embedding, this.state.focusDocument.embedding));
     this.data.forEach((doc,i) => doc._measure = measures[i]);
     this.drawTable();
-    // getTile(this.state.focusDocument.tcgaWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
-    getTile(this.state.focusDocument.gcsWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
-      this.elems.referenceDocumentContainer.innerHTML = `<img src=${tileURL}><p>Gleason Score: ${this.state.focusDocument.properties.gleason_score}`
+    getTile(this.state.focusDocument.tcgaWSIURL || this.state.focusDocument.wsiURL, this.state.focusDocument.tileParams, 256).then(tileURL => {
+      // getTile(this.state.focusDocument.gcsWSIURL, this.state.focusDocument.tileParams).then(tileURL => {
+      const loadingTextElement = this.elems.referenceDocumentContainer.querySelector("p#loadingFocusDocPreviewText")
+      if (loadingTextElement) {
+        this.elems.referenceDocumentContainer.removeChild(loadingTextElement)
+      }
+      this.elems.referenceDocumentContainer.innerHTML = `<a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${this.state.focusDocument.tcgaWSIURL || this.state.focusDocument.wsiURL}"><img src=${tileURL}></a><p>Gleason Score: ${this.state.focusDocument.properties.gleason_score}`
     })
-    this.elems.referenceDocumentContainer.innerHTML = `<p>Loading Patch...</p>`
+    this.elems.referenceDocumentContainer.innerHTML = `<p id="loadingFocusDocPreviewText">Loading...</p>`
   }
 
   async compareDocumentUpdated() {
-    const compareDocument = this.state.compareDocument[0];
-    // getTile(compareDocument.tcgaWSIURL, compareDocument.tileParams).then(tileURL => {
-    getTile(compareDocument.gcsWSIURL, compareDocument.tileParams).then(tileURL => {
-      this.elems.comparedDocumentContainer.innerHTML = `<img src=${tileURL}><p>Gleason Score: ${compareDocument.properties.gleason_score}`
+    const compareDocuments = this.state.compareDocument;
+    this.elems.comparedDocumentContainer.innerHTML = ""
+    compareDocuments.forEach(compareDocument => {
+      const {tcgaWSIId, tileParams } = compareDocument
+      let tileX, tileY, tileWidth, tileHeight
+      if (tileParams) {
+        tileX = tileParams.tileX
+        tileY = tileParams.tileY
+        tileWidth = tileParams.tileWidth
+        tileHeight = tileParams.tileHeight
+      }
+      getTile(compareDocument.tcgaWSIURL || compareDocument.wsiURL, compareDocument.tileParams, 256).then(tileURL => {
+      // getTile(compareDocument.gcsWSIURL, compareDocument.tileParams).then(tileURL => {
+        const loadingTextElement = this.elems.comparedDocumentContainer.querySelector("p#loadingCompareDocPreviewText")
+        if (loadingTextElement) {
+          this.elems.comparedDocumentContainer.removeChild(loadingTextElement)
+        }
+        if (!this.elems.comparedDocumentContainer.querySelector(`img[tcgaWSIId="${tcgaWSIId}"][tileX="${tileX}"][tileY="${tileY}"][tileWidth="${tileWidth}"][tileHeight="${tileHeight}"]`)) {
+          this.elems.comparedDocumentContainer.innerHTML += `<div><a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${compareDocument.tcgaWSIURL || compareDocument.wsiURL}"><img tcgaWSIId=${tcgaWSIId} tileX=${tileX} tileY=${tileY} tileWidth=${tileWidth} tileHeight=${tileHeight} src=${tileURL}></a><p>Gleason Score: ${compareDocument.properties.gleason_score}</div>`
+        }
+      })
     })
-    this.elems.comparedDocumentContainer.innerHTML = `<p>Loading Patch...</p>`
+    this.elems.comparedDocumentContainer.innerHTML = `<p id="loadingCompareDocPreviewText">Loading...</p>`
     this.drawUpdateExplorer();
   }
 
@@ -334,20 +338,30 @@ class Application {
     if (this.state.compareDocument) {
       // this.state.compareDocument.forEach(doc => colors[doc._index] = "blue");
       this.state.compareDocument.forEach(doc => borderWidths[doc._index] = 5);
-      this.state.compareDocument.forEach(doc => sizes[doc._index] = 30);
+      this.state.compareDocument.forEach(doc => sizes[doc._index] = 50);
     }
     if (this.state.focusDocument) {
       // colors[this.state.focusDocument._index] = "green";
       borderWidths[this.state.focusDocument._index] = 5
-      sizes[this.state.focusDocument._index] = 30;
+      sizes[this.state.focusDocument._index] = 50;
     }
 
-    const colorMap = new Map();
+    const colorMap = {};
     const opacitiesMap = new Map();
     const values = [...new Set(this.data.map(d => d.properties[this.state.colorBy]))].sort();
-    const colorRange = d3.schemeCategory10.map(color => d3.rgb(color));
-    
-    values.forEach((value, i) => colorMap.set(value, colorRange[i % colorRange.length]));
+    const colorScheme = [[0,0,0.5625],[0,0,0.625],[0,0,0.6875],[0,0,0.75],[0,0,0.8125],[0,0,0.875],[0,0,0.9375],[0,0,1],[0,0.0625,1],[0,0.125,1],[0,0.1875,1],[0,0.25,1],[0,0.3125,1],[0,0.375,1],[0,0.4375,1],[0,0.5,1],[0,0.5625,1],[0,0.625,1],[0,0.6875,1],[0,0.75,1],[0,0.8125,1],[0,0.875,1],[0,0.9375,1],[0,1,1],[0.0625,1,0.9375],[0.125,1,0.875],[0.1875,1,0.8125],[0.25,1,0.75],[0.3125,1,0.6875],[0.375,1,0.625],[0.4375,1,0.5625],[0.5,1,0.5],[0.5625,1,0.4375],[0.625,1,0.375],[0.6875,1,0.3125],[0.75,1,0.25],[0.8125,1,0.1875],[0.875,1,0.125],[0.9375,1,0.0625],[1,1,0],[1,0.9375,0],[1,0.875,0],[1,0.8125,0],[1,0.75,0],[1,0.6875,0],[1,0.625,0],[1,0.5625,0],[1,0.5,0],[1,0.4375,0],[1,0.375,0],[1,0.3125,0],[1,0.25,0],[1,0.1875,0],[1,0.125,0],[1,0.0625,0],[1,0,0],[0.9375,0,0],[0.875,0,0],[0.8125,0,0],[0.75,0,0],[0.6875,0,0],[0.625,0,0],[0.5625,0,0],[0.5,0,0]]
+    const numColorBlocks = Math.floor(colorScheme.length / values.length)
+    const colorRange = values.map((_,i) => {
+      const colorIndex = Math.floor(i*numColorBlocks + (numColorBlocks/2))
+      return {
+        'r': colorScheme[colorIndex][0]*255,
+        'g': colorScheme[colorIndex][1]*255,
+        'b': colorScheme[colorIndex][2]*255
+      }
+    });
+    values.forEach((value, i) => {
+      colorMap[value] = colorRange[i % colorRange.length]
+    });
     const valueCounts = values.reduce((countsObj, value) => {
       countsObj[value] = this.data.filter(d => d.properties[this.state.colorBy] === value).length
       return countsObj
@@ -361,10 +375,11 @@ class Application {
     values.forEach((value, i) => opacitiesMap.set(value, opacitiesRange[value]))
     // colors = this.data.map(d => d._measure);
     colors = this.data.map(d => {
-      const colorObj = colorMap.get(d.properties[this.state.colorBy])
+      const colorObj = colorMap[d.properties[this.state.colorBy]]
       const opacity = opacitiesMap.get(d.properties[this.state.colorBy])
       return `rgba(${colorObj.r},${colorObj.g},${colorObj.b},${opacity})`
     });
+    const names = this.data.map(d => `Gleason score: ${d.properties[this.state.colorBy]}`)
 
     const update = {
       marker: { 
@@ -372,14 +387,45 @@ class Application {
         size: sizes,
         line: {
           width: 0
-        },
-        showLegend: true
+        }
         // colorscale: "Blues",
       }
     };
+    // const colorRange = d3.schemeCategory10;
+    // const values = [...new Set(this.data.map(d => d.properties[this.state.colorBy]))];
+    // values.forEach((value, i) => colorMap.set(value, colorRange[i % colorRange.length]));
+    // // colors = this.data.map(d => d._measure);
+    // colors = this.data.map(d => colorMap.get(d.properties[this.state.colorBy]));
+
+    // const update = {
+    //   marker: { 
+    //     color: colors,
+    //     size: sizes,
+    //     // colorscale: "Blues",
+    //   }
+    // };
+    // // setTimeout is a workaround for a Plotly bug (https://github.com/plotly/plotly.js/issues/1025)
+    // setTimeout(() => Plotly.restyle(this.elems.explorerContainer, update, [0]), 50);
 
     // setTimeout is a workaround for a Plotly bug (https://github.com/plotly/plotly.js/issues/1025)
-    setTimeout(() => Plotly.restyle(this.elems.explorerContainer, update, [0]), 50);
+    // const legendTraces = values.map(value => {
+    //   return {
+    //     x: [null],
+    //     y: [null],
+    //     z: [null],
+    //     mode: 'markers',
+    //     type: 'scatter3d',
+    //     marker: {
+    //       color: colorMap[value],
+    //       size: 10
+    //     },
+    //     name: value,
+    //   };
+    // });
+    // Plotly.addTraces(this.elems.explorerContainer, legendTraces);
+    setTimeout(() => {
+      Plotly.restyle(this.elems.explorerContainer, update, [0])
+    }, 50);
   }
 
   drawExplorer() {
@@ -394,7 +440,7 @@ class Application {
         size: this.data.map(() => 5),
         color: this.data.map(() => "grey"),
       },
-      type: 'scatter3d'
+      type: 'scatter3d',
     };
 
     const layout = {
@@ -423,41 +469,41 @@ class Application {
 
     const measureType = this.state.measure.type;
 
-    const tableData = this.data
-      .map(doc => ({
-        ...doc.properties,
-        [measureType]: parseFloat(doc._measure.toFixed(3)),
-        _doc: doc,
-        _id: doc.tcgaWSIURL,
-      }));
-
-    if (measureType == "distance") {
-      tableData.sort((a,b) => a.distance - b.distance);
-    } else {
-      tableData.sort((a,b) => b.similarity - a.similarity);
-    }
-
-    const columns = [...Object.keys(tableData[0])].filter(d => !d.startsWith("_")).map(d => ({field: d, title: d}));
-
-    const table = new Tabulator(this.elems.closestTableContainer, {
-      data: tableData, 
-      // height: bbox.height,
-      layout:"fitDataFill",
-      selectableRows: true,
-      selectableRowsRangeMode:"click",
-      columns,
-      index: "_id",
-    });
-
-    table.on("tableBuilt", () => table.selectRow([tableData[0]._id]));
-
-    table.on("rowSelectionChanged", (data, rows, selected) => {
-      const compareDocuments = [];
-      for (const row of selected) {
-        compareDocuments.push( row._row.data._doc);
+      const tableData = this.data
+        .map(doc => ({
+          ...doc.properties,
+          [measureType]: parseFloat(doc._measure.toFixed(3)),
+          _doc: doc,
+          _id: doc.tcgaWSIURL,
+        }));
+  
+      if (measureType == "distance") {
+        tableData.sort((a,b) => a.distance - b.distance);
+      } else {
+        tableData.sort((a,b) => b.similarity - a.similarity);
       }
-      this.state.compareDocument = compareDocuments;
-    })
+  
+      const columns = [...Object.keys(tableData[0])].filter(d => !d.startsWith("_")).map(d => ({field: d, title: d}));
+  
+      const table = new Tabulator(this.elems.closestTableContainer, {
+        data: tableData, 
+        // height: bbox.height,
+        layout:"fitDataFill",
+        selectableRows: true,
+        selectableRowsRangeMode:"click",
+        columns,
+        index: "_id",
+      });
+  
+      table.on("tableBuilt", () => table.selectRow([tableData[0]._id]));
+  
+      table.on("rowSelectionChanged", (data, rows, selected) => {
+        const compareDocuments = [];
+        for (const row of selected) {
+          compareDocuments.push( row._row.data._doc);
+        }
+        this.state.compareDocument = compareDocuments;
+      })
   }
 
   elementRetrieval(elements) {
