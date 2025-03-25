@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>F-ESE</title>
+    <title>Multi-ESE</title>
     <link rel="icon" href="images/icon.svg">
     <link crossorigin="anonymous" type="text/css" rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" defer />
@@ -16,11 +16,11 @@
     <div id="main-header">
       <div id="logo-container">
         <i id="logo-icon" class="fas fa-circle-nodes"></i>
-        <span id="logo-text"><b>F-ESE</b>: <i>Federated-Embedded Space Explorer</i></span>
+        <span id="logo-text"><b>Multi-ESE</b>: <i>Multimodal Embedded Space Explorer</i></span>
       </div>
 
       <div id="links-container">
-        <a title="GitHub repo" href="https://github.com/episphere/ese"><i class="fa-brands fa-github"  data-tippy-content="GitHub" data-tippy-placement="bottom"></i> </a>
+        <a title="GitHub repo" href="https://github.com/prafulb/fese"><i class="fa-brands fa-github"  data-tippy-content="GitHub" data-tippy-placement="bottom"></i> </a>
       </div>
     </div>
 
@@ -37,10 +37,16 @@
             <!-- <i class="fas fa-cog button" data-tippy-content="Settings" popup="popup-settings"></i>
             <i class="fas fa-database button" data-tippy-content="Data Configuration"></i> -->
             <!-- <button id="button-embed">Join Federation</button> -->
-             <div>
-               <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal">Embed Slide</button>
-               <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal" disabled>Embed Pathology Report</button>
-             </div>
+             <!-- <div id="options"> -->
+              <!-- <div class="form-floating" id="selectModelDiv">
+                <select id="selectModel" class="form-select" onchange="selectModel()"></select>
+                <label for="selectModel">Use Model: </label>
+              </div> -->
+              <div>
+                <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal">+ Add Slide</button>
+              </div>
+               <!-- <button id="button-embed" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#slideEmbedModal" disabled>Embed Pathology Report</button> -->
+             <!-- </div> -->
             <!-- <button id="buttonLoadPCA" class="btn">PCA</button>
             <button id="buttonLoadTSNE" class="btn btn-primary">T-SNE</button> -->
           <!-- </div> -->
@@ -91,7 +97,7 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h1 class="modal-title fs-5" id="exampleModalLabel">Embed WSI Patch</h1>
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Embed Slide</h1>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -106,7 +112,7 @@
                 </span>
                 <br>
                 <span class="mb-1">
-                  <label for="imageLabel" class="form-label">Image Label: </label>                  
+                  <label for="imageLabel" class="form-label">Image Annotation: </label>                  
                   <input type="text" class="form-control" required id="imageLabel">
                 </span>
                 <br>
@@ -144,9 +150,9 @@
                   <label for="encoderModel" class="form-label">Encoder Model: </label>
                   <div class="btn-group">
                     <select id="encoderModel" class="form-select">
-                      <option selected value="https://huggingface.co/kaczmarj/CTransPath/resolve/main/model.onnx">CTransPath</option>
-                      <option value="https://huggingface.co/prafulb/phikon-onnx/resolve/main/model.onnx" disabled>Phikon</option>
-                      <option value="" disabled>PLIP</option>
+                      <option selected value="https://huggingface.co/prafulb/plip-onnx/resolve/main/model.onnx">PLIP</option>
+                      <option value="https://huggingface.co/kaczmarj/CTransPath/resolve/main/model.onnx">CTransPath</option>
+                      <option value="https://huggingface.co/prafulb/phikon-onnx/resolve/main/model.onnx">Phikon</option>
                       <option value="" disabled>CONCH</option>
                     </select>
                   </div>

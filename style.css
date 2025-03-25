@@ -89,6 +89,19 @@ img {
   /* background-color: rgb(221, 120, 120); */
 }
 
+#options {
+  width: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#selectModelDiv {
+  width: max-content;
+  min-width: 20rem;
+}
+
 .grid-card {
   background-color: white;
   border-radius: 6px;

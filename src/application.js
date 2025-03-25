@@ -9,22 +9,58 @@ import { WebFed } from "https:/episphere.github.io/lab/webFed_yjs.js"
 let signalingServer = "https://signalyjs-df59a68bd6e6.herokuapp.com"
 const FEDERATION_NAME = "FESE"
 const selfName = window.crypto.randomUUID()
+const supportedModelsPath = "https://prafulb.github.io/fese/models/supportedModels.json"
 
 Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
+  { id: "wsi_slides", path: "https://prafulb.github.io/fese/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
+  { id: "tcga_reports", path: "fese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   { id: "gleason_slides", path: "https://prafulb.github.io/fese/data/tcgaGleasonSlideEmbeddingsTSNE.json", colorBy: "gleason_score"},
   { id: "gleason_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
-  { id: "wsi_slides", path: "https://prafulb.github.io/fese/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
-  { id: "tcga_reports", path: "/ese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
   { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose_tsne.json.zip", colorBy: "cancer_type" },
   { id: "soc_codes", path: "/ese/data/soc_code_jobs_tsne.json.zip" }
 ]
 
+const SUPPORTED_MODELS = [
+  {
+      "modelId": 0,
+      "modelName": "CTransPath",
+      "modelURL": "https://huggingface.co/kaczmarj/CTransPath/resolve/main/model.onnx",
+      "multimodal": false,
+      "defaultNumPatches": 50,
+      "enabled": true
+  },
+  {
+      "modelId": 1,
+      "modelName": "Phikon",
+      "modelURL": "https://huggingface.co/prafulb/phikon-onnx/resolve/main/model.onnx",
+      "multimodal": false,
+      "defaultNumPatches": 50,
+      "enabled": true
+  },
+  {
+      "modelId": 2,
+      "modelName": "PLIP",
+      "modelURL": "https://huggingface.co/prafulb/plip-onnx/resolve/main/model.onnx",
+      "multimodal": true,
+      "defaultNumPatches": 1,
+      "enabled": true
+  },
+  {
+      "modelId": 3,
+      "modelName": "CONCH",
+      "modelURL": "https://huggingface.co/MahmoodLab/CONCH",
+      "multimodal": true,
+      "enabled": false
+  }
+]
+
 const CONSTANTS = {
   DEFAULT_STATE: {
-    dataConfig: EXAMPLE_DATA[0]
+    dataConfig: EXAMPLE_DATA[0],
+    selectedModel: SUPPORTED_MODELS[0]
   }
 }
 
@@ -46,6 +82,7 @@ class Application {
       comparedDocumentContainer: "#compared-document-container",
       // searchForm: "#search-form",
       // searchInput: "#search-input",
+      selectModel: "#selectModel",
       patchEmbed: "#patchEmbed",
       patchEmbedModal: "#patchEmbedModal",
       // buttonFill: "#button-fill"
@@ -103,6 +140,7 @@ class Application {
       this.state.focusDocument = this.data[this.data.length - 1]
     })
     this.state.trigger("dataConfig");
+    // this.state.trigger("selectedModel");
   }
 
   initState() {
@@ -120,14 +158,18 @@ class Application {
     this.state.subscribe("focusDocument", () => this.focusDocumentUpdated());
     this.state.defineProperty("compareDocument", null);
     this.state.subscribe("compareDocument", () => this.compareDocumentUpdated());
-
+    
     // this.state.defineProperty("measure", { f: euclideanDistance, type: "distance" });
     this.state.defineProperty("measure", { f: cosineSimilarity, type: "similarity" });
-
+    
     this.state.defineProperty("colorBy", initialState.dataConfig.colorBy);
     this.state.defineProperty("colorByOptions", []);
-
+    
     this.state.subscribe("colorBy",  () => this.compareDocumentUpdated());
+    
+    
+    this.state.defineProperty("selectedModel", initialState.selectedModel);
+    this.state.subscribe("selectedModel", () => this.modelSelectionUpdated());
   }
 
   hookInputs() {
@@ -298,7 +340,7 @@ class Application {
       if (loadingTextElement) {
         this.elems.referenceDocumentContainer.removeChild(loadingTextElement)
       }
-      this.elems.referenceDocumentContainer.innerHTML = `<a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${this.state.focusDocument.tcgaWSIURL || this.state.focusDocument.wsiURL}"><img src=${tileURL}></a><p>Gleason Score: ${this.state.focusDocument.properties.gleason_score}`
+      this.elems.referenceDocumentContainer.innerHTML = `<a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${this.state.focusDocument.tcgaWSIURL || this.state.focusDocument.wsiURL}"><img src=${tileURL}></a><p>${this.state.colorBy}: ${this.state.focusDocument.properties[this.state.colorBy]}`
     })
     this.elems.referenceDocumentContainer.innerHTML = `<p id="loadingFocusDocPreviewText">Loading...</p>`
   }
@@ -322,12 +364,37 @@ class Application {
           this.elems.comparedDocumentContainer.removeChild(loadingTextElement)
         }
         if (!this.elems.comparedDocumentContainer.querySelector(`img[tcgaWSIId="${tcgaWSIId}"][tileX="${tileX}"][tileY="${tileY}"][tileWidth="${tileWidth}"][tileHeight="${tileHeight}"]`)) {
-          this.elems.comparedDocumentContainer.innerHTML += `<div><a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${compareDocument.tcgaWSIURL || compareDocument.wsiURL}"><img tcgaWSIId=${tcgaWSIId} tileX=${tileX} tileY=${tileY} tileWidth=${tileWidth} tileHeight=${tileHeight} src=${tileURL}></a><p>Gleason Score: ${compareDocument.properties.gleason_score}</div>`
+          this.elems.comparedDocumentContainer.innerHTML += `<div><a target="_blank" rel="noopener noreferrer" href="https://episphere.github.io/imagebox3/#wsiURL=${compareDocument.tcgaWSIURL || compareDocument.wsiURL}"><img tcgaWSIId=${tcgaWSIId} tileX=${tileX} tileY=${tileY} tileWidth=${tileWidth} tileHeight=${tileHeight} src=${tileURL}></a><p>${this.state.colorBy}: ${compareDocument.properties[this.state.colorBy]}</div>`
         }
       })
     })
     this.elems.comparedDocumentContainer.innerHTML = `<p id="loadingCompareDocPreviewText">Loading...</p>`
     this.drawUpdateExplorer();
+  }
+
+  async modelSelectionUpdated() {
+    if (!this.model && !this.supportedModels) {
+      this.supportedModels = await (await fetch(supportedModelsPath)).json()
+      this.supportedModels.forEach(model => {
+        const optionElement = document.createElement("option")
+        optionElement.innerText = model.modelName
+        optionElement.value = model.modelURL
+        optionElement.setAttribute("modelId", model.modelId)
+        optionElement.setAttribute("disabled", !model.enabled)
+        this.elems.selectModel.appendChild(optionElement)
+      })
+    }
+    this.model = await loadModel(this.state.selectedModel)
+  }
+
+  selectModel() {
+    const selectedModel = this.supportedModels.find(model => model.modelURL === this.elems.selectModel.value)
+    this.state.selectedModel = selectedModel
+    if (this.state.selectedModel.multimodal) {
+      this.elems.buttonEmbed.setAttribute("disabled")
+    } else {
+      this.elems.buttonEmbed.removeAttribute("disabled")
+    }
   }
 
   drawUpdateExplorer() {
@@ -379,8 +446,8 @@ class Application {
     // colors = this.data.map(d => d._measure);
     colors = this.data.map(d => {
       const colorObj = colorMap[d.properties[this.state.colorBy]]
-      const opacity = opacitiesMap.get(d.properties[this.state.colorBy])
-      return `rgba(${colorObj.r},${colorObj.g},${colorObj.b},${opacity})`
+      // const opacity = opacitiesMap.get(d.properties[this.state.colorBy])
+      return `rgba(${colorObj.r},${colorObj.g},${colorObj.b},${1})`
     });
     const names = this.data.map(d => `Gleason score: ${d.properties[this.state.colorBy]}`)
 
@@ -411,23 +478,26 @@ class Application {
     // setTimeout(() => Plotly.restyle(this.elems.explorerContainer, update, [0]), 50);
 
     // setTimeout is a workaround for a Plotly bug (https://github.com/plotly/plotly.js/issues/1025)
-    // const legendTraces = values.map(value => {
-    //   return {
-    //     x: [null],
-    //     y: [null],
-    //     z: [null],
-    //     mode: 'markers',
-    //     type: 'scatter3d',
-    //     marker: {
-    //       color: colorMap[value],
-    //       size: 10
-    //     },
-    //     name: value,
-    //   };
-    // });
-    // Plotly.addTraces(this.elems.explorerContainer, legendTraces);
+    const legendTraces = values.map(value => {
+      return {
+        x: [null],
+        y: [null],
+        z: [null],
+        mode: 'markers',
+        type: 'scatter3d',
+        marker: {
+          color: colorMap[value],
+          size: 10
+        },
+        name: value,
+      };
+    });
     setTimeout(() => {
       Plotly.restyle(this.elems.explorerContainer, update, [0])
+      // if (!this.elems.explorerContainer.legendAdded) {
+      //   Plotly.addTraces(this.elems.explorerContainer, legendTraces);
+      //   this.elems.explorerContainer.legendAdded =
+      // }
     }, 50);
   }
 
