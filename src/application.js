@@ -15,7 +15,7 @@ Tabulator.registerModule([SelectRowModule])
 
 const EXAMPLE_DATA = [
   { id: "wsi_slides", path: "https://prafulb.github.io/fese/data/tcgaSlideEmbeddingsTSNE4Classes.json", colorBy: "Primary Site"},
-  { id: "tcga_reports", path: "fese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
+  { id: "tcga_reports", path: "https://prafulb.github.io/fese/data/tcga_reports_tsne.json.zip", colorBy: "cancer_type"},
   { id: "gleason_slides", path: "https://prafulb.github.io/fese/data/tcgaGleasonSlideEmbeddingsTSNE.json", colorBy: "gleason_score"},
   { id: "gleason_patches", path: "https://prafulb.github.io/fese/data/wsiGleasonPatchEmbeddingsTSNE.json", colorBy: "gleason_score"},
   // { id: "tcga_reports_verbose", path: "/ese/data/tcga_reports_verbose.json.zip", colorBy: "cancer_type" },
