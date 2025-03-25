@@ -367,7 +367,8 @@ export const samplePatchesAndEmbedSlide = async (wsiURL, numPatches, encoderMode
 
   let slideEmbeddings = []
   if (imagebox3Instance.imageSource !== wsiURL) {
-    const imagebox3Instance = new Imagebox3.Imagebox3(`${tcgaBasePath}/${img.file_id}`)
+    const imagebox3 = await import("https://episphere.github.io/imagebox3/imagebox3.mjs")
+    const imagebox3Instance = new imagebox3.Imagebox3(`${tcgaBasePath}/${img.file_id}`)
     await imagebox3Instance.init()
   }
   const tissueRegions = await findTissueRegionsInImage(imagebox3Instance)
